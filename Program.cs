@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Threading;
 using System.Windows.Forms;
@@ -12,13 +13,14 @@ namespace CampusAutoLogin
         {
             if (HasArgument(args, "--silent"))
             {
-                LoginRunner.RunWithRetries(delegate(string ignored) { });
+                OpenPortalHomeAfterSuccessfulLogin(LoginRunner.RunWithRetries(delegate(string ignored) { }));
                 return;
             }
 
             if (HasArgument(args, "--run-once"))
             {
                 LoginResult result = LoginRunner.RunWithRetries(delegate(string message) { Console.WriteLine(message); });
+                OpenPortalHomeAfterSuccessfulLogin(result);
                 Environment.ExitCode = result.Succeeded ? 0 : 1;
                 return;
             }
@@ -26,6 +28,20 @@ namespace CampusAutoLogin
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new SettingsForm());
+        }
+
+        internal static void OpenPortalHomeAfterSuccessfulLogin(LoginResult result)
+        {
+            if (!PortalNavigation.ShouldOpenAfter(result)) return;
+
+            try
+            {
+                Process.Start(PortalNavigation.HomeUrl);
+            }
+            catch
+            {
+                // A browser launch failure must not change a successful login result.
+            }
         }
 
         private static bool HasArgument(string[] args, string expected)
@@ -159,6 +175,7 @@ namespace CampusAutoLogin
         private void LoginOnce(CampusCredentials credentials)
         {
             LoginResult result = new CampusPortalClient().TryLogin(credentials);
+            Program.OpenPortalHomeAfterSuccessfulLogin(result);
             BeginInvoke((MethodInvoker)delegate
             {
                 status.Text = result.Message;

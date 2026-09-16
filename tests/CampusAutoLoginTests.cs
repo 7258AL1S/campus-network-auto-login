@@ -10,6 +10,8 @@ internal static class CampusAutoLoginTests
         Run("Parses the local Dr.COM status envelope", ParsesStatusEnvelope);
         Run("Builds the portal login request with encoded credentials", BuildsLoginRequest);
         Run("Recognizes portal success responses", RecognizesLoginSuccess);
+        Run("Recognizes plain JSON portal responses", RecognizesPlainJsonLoginSuccess);
+        Run("Opens the portal only after a successful login", OpensPortalOnlyAfterSuccessfulLogin);
         Run("Parses plaintext config.ini credentials", ParsesIniSettings);
 
         if (failures != 0)
@@ -55,6 +57,19 @@ internal static class CampusAutoLoginTests
         Equal(true, PortalResponseParser.IsLoginSuccessful("CampusAutoLogin({\"result\":1,\"msg\":\"ok\"})"));
         Equal(true, PortalResponseParser.IsLoginSuccessful("CampusAutoLogin({\"result\":\"ok\"})"));
         Equal(false, PortalResponseParser.IsLoginSuccessful("CampusAutoLogin({\"result\":0,\"msg\":\"bad password\"})"));
+    }
+
+    private static void RecognizesPlainJsonLoginSuccess()
+    {
+        Equal(true, PortalResponseParser.IsLoginSuccessful("{\"result\":1,\"msg\":\"ok\"}"));
+        Equal(false, PortalResponseParser.IsLoginSuccessful("{\"result\":0,\"msg\":\"bad password\"}"));
+    }
+
+    private static void OpensPortalOnlyAfterSuccessfulLogin()
+    {
+        Equal("http://10.26.13.2/", PortalNavigation.HomeUrl);
+        Equal(true, PortalNavigation.ShouldOpenAfter(new LoginResult(true, "ok")));
+        Equal(false, PortalNavigation.ShouldOpenAfter(new LoginResult(false, "bad password")));
     }
 
     private static void ParsesIniSettings()

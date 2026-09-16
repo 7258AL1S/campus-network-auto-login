@@ -69,14 +69,29 @@ namespace CampusAutoLogin
 
         private static IDictionary<string, object> ParseJsonp(string response)
         {
-            int start = response.IndexOf('(');
-            int end = response.LastIndexOf(')');
-            if (start < 0 || end <= start)
+            if (string.IsNullOrWhiteSpace(response))
             {
-                throw new InvalidDataException("The portal response was not JSONP.");
+                throw new InvalidDataException("The portal response was empty.");
             }
 
-            object value = new JavaScriptSerializer().DeserializeObject(response.Substring(start + 1, end - start - 1));
+            string payload = response.Trim().TrimStart('\uFEFF');
+            int start = payload.IndexOf('(');
+            int end = payload.LastIndexOf(')');
+            if (start >= 0 && end > start)
+            {
+                payload = payload.Substring(start + 1, end - start - 1);
+            }
+
+            object value;
+            try
+            {
+                value = new JavaScriptSerializer().DeserializeObject(payload.Trim().TrimEnd(';'));
+            }
+            catch (ArgumentException error)
+            {
+                throw new InvalidDataException("The portal response was not valid JSON or JSONP.", error);
+            }
+
             IDictionary<string, object> result = value as IDictionary<string, object>;
             if (result == null)
             {
@@ -111,6 +126,16 @@ namespace CampusAutoLogin
 
         public bool Succeeded { get; private set; }
         public string Message { get; private set; }
+    }
+
+    public static class PortalNavigation
+    {
+        public const string HomeUrl = "http://10.26.13.2/";
+
+        public static bool ShouldOpenAfter(LoginResult result)
+        {
+            return result != null && result.Succeeded;
+        }
     }
 
     public sealed class CampusPortalClient
