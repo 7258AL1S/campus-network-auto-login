@@ -1,68 +1,53 @@
-# 校园网自动登录 🎓
+# CampusAutoLoginWin7
 
-哈哈😄 各位电教委员是否因为总是忘记登录校园网而被老师骂呢？这里是我们的救星：
-Windows 开机自动登录校园网认证系统，无需手动打开浏览器输入账号密码。
+Windows 7 campus-network login helper for the portal detected at `10.26.13.2`.
 
-## 适用场景
+## What it does
 
-- 学校/公司机房每天需要手动登录校园网
-- Windows 7 及以上系统
-- 基于 Web 表单认证的校园网系统（深澜、锐捷、华为、Dr.COM 等）
+- Reads the account and password from `config.ini` in the same folder as the executable.
+- Includes `install-autostart.bat`, which registers automatic startup for the current Windows user. No administrator permission is needed.
+- At sign-in, waits for the network and retries the campus login endpoint ten times over about five minutes.
+- Reads the portal's current IP and MAC details before it attempts login.
 
-## 快速开始
+## Build on this Mac
 
-### 1. 配置账号
+The project targets .NET Framework 4 and has no NuGet or third-party dependency.
 
-编辑 `config.ini`，填入你的账号密码：
+```sh
+./build-macos.sh
+```
+
+The build creates these files in `bin/`:
+
+- `CampusAutoLogin.exe`: the WinForms utility.
+- `CampusAutoLoginTests.exe`: protocol parsing and request-building tests.
+- `config.ini`: account/password configuration template.
+- `install-autostart.bat`: current-user automatic-startup installer.
+
+## Use on the Windows 7 computer
+
+1. Copy `CampusAutoLogin.exe`, `config.ini`, and `install-autostart.bat` together to a folder that the Windows user can keep, such as a folder under Documents. Do not use a temporary download location.
+2. Open `config.ini` in Notepad and set the two values:
 
 ```ini
-[account]
-username = 你的学号
-password = 你的密码
-save_password = 1
-
-[server]
-login_url = http://10.26.13.2
+[CampusAutoLogin]
+Account=your-campus-account
+Password=your-campus-password
 ```
 
-### 2. 设置开机启动
+3. Double-click `install-autostart.bat`. It registers the executable under the current user's Windows startup registry key.
+4. Run `CampusAutoLogin.exe`, then choose `Save and login now` while connected to the school network to validate the account without rebooting.
 
-1. 按 `Win + R`，输入 `shell:startup`，回车
-2. 将 `校园网登录.exe` 的**快捷方式**放入该文件夹
-3. 下次开机即自动运行
+`config.ini` stores the password as plaintext. Keep the folder private and do not share or sync this file. The executable can also edit the same INI from its settings window.
 
-### 3. 运行效果
+## Portal profile verified from this network
 
-- 登录成功 → 弹窗提示"校园网已连接 ✅"
-- 登录失败 → 弹窗提示错误原因
-- 所有运行记录保存在 `login.log`
+- Captive-portal front page: `10.26.13.2`.
+- Login service: `10.26.13.2:801/eportal/portal/login`.
+- Login type: `login_method=1`.
+- Client fields: account/password plus the current portal-provided IP and network adapter MAC address.
+- Status probe: `/drcom/chkstatus`.
 
-## 工作原理
+## Verification boundary
 
-```
-开机启动 → 等待网络就绪 → 分析登录表单 → POST账号密码 → 弹窗提示结果
-```
-
-首次运行时会自动分析校园网页面的表单结构，写入 `config.ini` 的 `[form]` 段，后续直接读取，秒级完成登录。
-
-## 文件说明
-
-| 文件 | 说明 |
-|------|------|
-| `校园网登录.exe` | 主程序 |
-| `config.ini` | 配置文件，记事本可编辑 |
-| `login.log` | 运行日志 |
-| `使用说明.txt` | 详细使用指南 |
-
-## 自行打包
-
-```bash
-pip install requests beautifulsoup4 pyinstaller
-pyinstaller --onefile --noconsole --name 校园网登录 main.py
-```
-
-输出文件在 `dist/` 目录下。
-
-## 许可证
-
-MIT License
+The request shape was extracted from the live portal page and its currently served JavaScript. No real account or password was submitted during investigation. A Windows 7 physical-machine login still needs to be tested after the executable is compiled.
